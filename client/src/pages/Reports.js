@@ -83,125 +83,97 @@ export default function Reports() {
   }, [monthTx]);
 
   const exportToPDF = () => {
-    const sortedTx = monthTx.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+  const sortedTx = monthTx
+    .slice()
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Top banner
-    const pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFillColor(210, 4, 4);
-    doc.rect(0, 0, pageWidth, 70, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text('FINANCE TRACKER', 24, 30);
-    doc.setFontSize(12);
-    doc.text(
-      `Monthly Transactions Report - ${new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}`,
-      24,
-      52
-    );
+  const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Summary chips
-    const summaryY = 90;
-    const chips = [
-      { label: 'Income', value: `₹${summary.income}`, color: [40, 167, 69] },
-      { label: 'Expense', value: `₹${summary.expense}`, color: [220, 53, 69] },
-      { label: 'Balance', value: `₹${summary.balance}`, color: [33, 37, 41] },
-      { label: 'Transactions', value: `${summary.totalTransactions}`, color: [2, 117, 216] },
-    ];
-    let chipX = 24;
-    chips.forEach((c) => {
-      const text = `${c.label}: ${c.value}`;
-      doc.setFontSize(10);
-      const textWidth = doc.getTextWidth(text);
-      const padX = 8;
-      const padY = 6;
-      doc.setFillColor(...c.color);
-      doc.roundedRect(chipX, summaryY - 12, textWidth + padX * 2, 20, 6, 6, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.text(text, chipX + padX, summaryY + 2);
-      chipX += textWidth + padX * 2 + 8;
-    });
+  // ---- Title ----
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Monthly Transactions Report", pageWidth / 2, 40, {
+    align: "center",
+  });
 
-    // Table
-    autoTable(doc, {
-      startY: summaryY + 28,
-      head: [["Date", "Type", "Category", "Amount (₹)", "Description"]],
-      body: sortedTx.map((tx) => [
-        new Date(tx.date).toLocaleDateString(),
-        tx.type,
-        tx.category || "-",
-        Number(tx.amount).toFixed(2),
-        tx.description || "-",
-      ]),
-      theme: 'striped',
-      styles: {
-        fontSize: 9,
-        cellPadding: 6,
-        lineColor: [222, 226, 230],
-        lineWidth: 0.4,
-      },
-      headStyles: {
-        fillColor: [33, 37, 41],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [248, 249, 250],
-      },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 60, halign: 'center' },
-        2: { cellWidth: 110 },
-        3: { cellWidth: 80, halign: 'right' },
-        4: { cellWidth: 'auto' },
-      },
-      didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 1) {
-          const type = data.cell.raw;
-          if (type === 'Income') data.cell.styles.textColor = [40, 167, 69];
-          if (type === 'Expense') data.cell.styles.textColor = [220, 53, 69];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      },
-      didDrawPage: (data) => {
-        // Footer page numbers
-        const pageCount = doc.internal.getNumberOfPages();
-        const str = `Page ${doc.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`;
-        doc.setFontSize(8);
-        doc.setTextColor(120, 120, 120);
-        doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 10);
-      },
-    });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(
+    `Month: ${new Date(selectedYear, selectedMonth - 1).toLocaleString(
+      "default",
+      { month: "long", year: "numeric" }
+    )}`,
+    pageWidth / 2,
+    60,
+    { align: "center" }
+  );
 
-    // Totals row (separate table for emphasis)
-    const totals = sortedTx.reduce(
-      (acc, t) => {
-        if (t.type === 'Income') acc.income += Number(t.amount || 0);
-        if (t.type === 'Expense') acc.expense += Number(t.amount || 0);
-        return acc;
-      },
-      { income: 0, expense: 0 }
-    );
-    const balance = totals.income - totals.expense;
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 10,
-      head: [["Total Income (₹)", "Total Expense (₹)", "Balance (₹)"]],
-      body: [[
-        totals.income.toFixed(2),
-        totals.expense.toFixed(2),
-        balance.toFixed(2),
-      ]],
-      styles: { halign: 'right', cellPadding: 6 },
-      headStyles: { fillColor: [210, 4, 4], textColor: [255, 255, 255] },
-      columnStyles: {
-        0: { halign: 'right' },
-        1: { halign: 'right' },
-        2: { halign: 'right', textColor: balance >= 0 ? [40, 167, 69] : [220, 53, 69] },
-      },
-    });
+  // ---- Transactions Table (NEAT TEXT ONLY) ----
+  autoTable(doc, {
+    startY: 90,
+    head: [["Date", "Type", "Category", "Amount (INR)", "Description"]],
+    body: sortedTx.map((tx) => [
+      new Date(tx.date).toLocaleDateString(),
+      tx.type,
+      tx.category || "-",
+      Number(tx.amount).toFixed(2),
+      tx.description || "-",
+    ]),
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 6,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      font: "helvetica",
+    },
+    headStyles: {
+      fontStyle: "bold",
+      textColor: [0, 0, 0],
+      fillColor: false,
+    },
+  });
 
-    doc.save(`finance_report_${selectedMonth}_${selectedYear}.pdf`);
-  };
+  // ---- Totals Calculation ----
+  const totals = sortedTx.reduce(
+    (acc, t) => {
+      if (t.type === "Income") acc.income += Number(t.amount || 0);
+      if (t.type === "Expense") acc.expense += Number(t.amount || 0);
+      return acc;
+    },
+    { income: 0, expense: 0 }
+  );
+
+  const balance = totals.income - totals.expense;
+
+  // ---- Totals Table (Below) ----
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 15,
+    head: [["Total Income (INR)", "Total Expense (INR)", "Balance (INR)"]],
+    body: [[
+      totals.income.toFixed(2),
+      totals.expense.toFixed(2),
+      balance.toFixed(2),
+    ]],
+    theme: "grid",
+    styles: {
+      fontSize: 11,
+      halign: "right",
+      cellPadding: 6,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      font: "helvetica",
+    },
+    headStyles: {
+      fontStyle: "bold",
+      textColor: [0, 0, 0],
+      fillColor: false,
+    },
+  });
+
+  doc.save(`finance_report_${selectedMonth}_${selectedYear}.pdf`);
+};
 
   const exportToExcel = () => {
     // Transactions sheet
